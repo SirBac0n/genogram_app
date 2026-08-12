@@ -129,9 +129,10 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
     }
 
     if (panState.current) {
-      const dx = e.clientX - panState.current.startX
-      const dy = e.clientY - panState.current.startY
-      setView((v) => ({ ...v, x: panState.current!.viewX + dx, y: panState.current!.viewY + dy }))
+      const { startX, startY, viewX, viewY } = panState.current
+      const dx = e.clientX - startX
+      const dy = e.clientY - startY
+      setView((v) => ({ ...v, x: viewX + dx, y: viewY + dy }))
     }
     if (dragState.current) {
       const d = dragState.current
