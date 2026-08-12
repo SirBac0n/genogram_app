@@ -1,0 +1,242 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
+import { PersonNode } from './PersonNode'
+import { UnionLines } from './UnionLines'
+import { SiblingLines } from './SiblingLines'
+import type { Selection } from '../types'
+import type { useGenogramStore } from '../state/useGenogramStore'
+
+export type Mode =
+  | 'select'
+  | 'add-male'
+  | 'add-female'
+  | 'add-unknown'
+  | 'link-partner'
+  | 'link-child'
+  | 'link-sibling'
+
+interface CanvasProps {
+  store: ReturnType<typeof useGenogramStore>
+  mode: Mode
+  onModeConsumed: () => void
+  selection: Selection
+  onSelect: (selection: Selection) => void
+}
+
+interface ViewState {
+  x: number
+  y: number
+  scale: number
+}
+
+const DRAG_THRESHOLD = 4
+
+export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: CanvasProps) {
+  const { state } = store
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [view, setView] = useState<ViewState>({ x: 0, y: 0, scale: 1 })
+  const [pendingLink, setPendingLink] = useState<string | null>(null)
+
+  const panState = useRef<{ startX: number; startY: number; viewX: number; viewY: number } | null>(null)
+  const dragState = useRef<{
+    personId: string
+    startClientX: number
+    startClientY: number
+    startX: number
+    startY: number
+    moved: boolean
+  } | null>(null)
+
+  const peopleById = useMemo(() => new Map(state.people.map((p) => [p.id, p])), [state.people])
+
+  function clientToWorld(clientX: number, clientY: number) {
+    const svg = svgRef.current
+    if (!svg) return { x: 0, y: 0 }
+    const rect = svg.getBoundingClientRect()
+    const sx = clientX - rect.left
+    const sy = clientY - rect.top
+    return { x: (sx - view.x) / view.scale, y: (sy - view.y) / view.scale }
+  }
+
+  function handleBackgroundPointerDown(e: ReactPointerEvent<SVGSVGElement>) {
+    if (e.target !== svgRef.current) return
+    if (mode.startsWith('add-')) {
+      const sex = mode === 'add-male' ? 'male' : mode === 'add-female' ? 'female' : 'unknown'
+      const { x, y } = clientToWorld(e.clientX, e.clientY)
+      store.addPerson(sex, x, y)
+      onModeConsumed()
+      return
+    }
+    onSelect({ kind: null, id: null })
+    panState.current = { startX: e.clientX, startY: e.clientY, viewX: view.x, viewY: view.y }
+    ;(e.target as Element).setPointerCapture(e.pointerId)
+  }
+
+  function handleBackgroundPointerMove(e: ReactPointerEvent<SVGSVGElement>) {
+    if (panState.current) {
+      const dx = e.clientX - panState.current.startX
+      const dy = e.clientY - panState.current.startY
+      setView((v) => ({ ...v, x: panState.current!.viewX + dx, y: panState.current!.viewY + dy }))
+    }
+    if (dragState.current) {
+      const d = dragState.current
+      const dx = e.clientX - d.startClientX
+      const dy = e.clientY - d.startClientY
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) d.moved = true
+      if (d.moved) {
+        store.movePerson(d.personId, d.startX + dx / view.scale, d.startY + dy / view.scale)
+      }
+    }
+  }
+
+  function handleBackgroundPointerUp() {
+    panState.current = null
+    dragState.current = null
+  }
+
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    function onWheel(e: WheelEvent) {
+      e.preventDefault()
+      const rect = svg!.getBoundingClientRect()
+      const cx = e.clientX - rect.left
+      const cy = e.clientY - rect.top
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1
+      setView((v) => {
+        const newScale = Math.min(3, Math.max(0.3, v.scale * factor))
+        const worldX = (cx - v.x) / v.scale
+        const worldY = (cy - v.y) / v.scale
+        return { scale: newScale, x: cx - worldX * newScale, y: cy - worldY * newScale }
+      })
+    }
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', onWheel)
+  }, [])
+
+  function handlePersonPointerDown(e: ReactPointerEvent, personId: string) {
+    e.stopPropagation()
+    if (mode === 'select') {
+      const person = peopleById.get(personId)
+      if (!person) return
+      dragState.current = {
+        personId,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startX: person.x,
+        startY: person.y,
+        moved: false,
+      }
+      ;(e.target as Element).setPointerCapture(e.pointerId)
+    }
+  }
+
+  function handlePersonClick(e: React.MouseEvent, personId: string) {
+    e.stopPropagation()
+    if (dragState.current?.moved) return
+    if (mode === 'select') {
+      onSelect({ kind: 'person', id: personId })
+      return
+    }
+    if (mode === 'link-partner') {
+      if (!pendingLink) {
+        setPendingLink(personId)
+      } else if (pendingLink !== personId) {
+        store.addUnion(pendingLink, personId)
+        setPendingLink(null)
+        onModeConsumed()
+      }
+      return
+    }
+    if (mode === 'link-child') {
+      if (!pendingLink) {
+        setPendingLink(personId)
+      } else if (pendingLink !== personId) {
+        store.linkParentChild(pendingLink, personId, 'biological')
+        setPendingLink(null)
+        onModeConsumed()
+      }
+      return
+    }
+    if (mode === 'link-sibling') {
+      if (!pendingLink) {
+        setPendingLink(personId)
+      } else if (pendingLink !== personId) {
+        store.addSiblingLink(pendingLink, personId)
+        setPendingLink(null)
+        onModeConsumed()
+      }
+      return
+    }
+  }
+
+  function handleUnionClick(e: React.MouseEvent, unionId: string) {
+    e.stopPropagation()
+    if (mode === 'select') onSelect({ kind: 'union', id: unionId })
+  }
+
+  function handleChildLinkClick(e: React.MouseEvent, unionId: string, childId: string) {
+    e.stopPropagation()
+    if (mode === 'select') onSelect({ kind: 'child-link', id: unionId, childId })
+  }
+
+  function handleSiblingLinkClick(e: React.MouseEvent, linkId: string) {
+    e.stopPropagation()
+    if (mode === 'select') onSelect({ kind: 'sibling-link', id: linkId })
+  }
+
+  const cursor = mode.startsWith('add-') ? 'crosshair' : mode !== 'select' ? 'pointer' : 'default'
+
+  return (
+    <svg
+      ref={svgRef}
+      style={{ width: '100%', height: '100%', touchAction: 'none', cursor }}
+      onPointerDown={handleBackgroundPointerDown}
+      onPointerMove={handleBackgroundPointerMove}
+      onPointerUp={handleBackgroundPointerUp}
+    >
+      <defs>
+        <marker id="proband-arrow" markerWidth={8} markerHeight={8} refX={6} refY={4} orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#2563eb" />
+        </marker>
+        <pattern id="bg-dots" width={24} height={24} patternUnits="userSpaceOnUse">
+          <circle cx={1} cy={1} r={1} fill="#e2e2e2" />
+        </pattern>
+      </defs>
+      <rect x={-5000} y={-5000} width={10000} height={10000} fill="url(#bg-dots)" pointerEvents="none" />
+      <g transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
+        {state.siblingLinks.map((l) => (
+          <SiblingLines
+            key={l.id}
+            link={l}
+            peopleById={peopleById}
+            selected={selection.kind === 'sibling-link' && selection.id === l.id}
+            onClick={(e) => handleSiblingLinkClick(e, l.id)}
+          />
+        ))}
+        {state.unions.map((u) => (
+          <UnionLines
+            key={u.id}
+            union={u}
+            peopleById={peopleById}
+            selected={selection.kind === 'union' && selection.id === u.id}
+            selectedChildId={selection.kind === 'child-link' && selection.id === u.id ? selection.childId : null}
+            onClick={(e) => handleUnionClick(e, u.id)}
+            onChildClick={(e, childId) => handleChildLinkClick(e, u.id, childId)}
+          />
+        ))}
+        {state.people.map((p) => (
+          <PersonNode
+            key={p.id}
+            person={p}
+            selected={
+              (selection.kind === 'person' && selection.id === p.id) || pendingLink === p.id
+            }
+            onPointerDown={(e) => handlePersonPointerDown(e, p.id)}
+            onClick={(e) => handlePersonClick(e, p.id)}
+          />
+        ))}
+      </g>
+    </svg>
+  )
+}
