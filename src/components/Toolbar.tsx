@@ -30,6 +30,7 @@ const buttonBase: React.CSSProperties = {
   flexShrink: 0,
   appearance: 'none',
   WebkitAppearance: 'none',
+  touchAction: 'manipulation',
 }
 
 export function Toolbar({

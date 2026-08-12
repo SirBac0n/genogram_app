@@ -405,6 +405,7 @@ const mobileCloseButtonStyle: React.CSSProperties = {
   padding: 8,
   cursor: 'pointer',
   color: '#666',
+  touchAction: 'manipulation',
 }
 
 const smallButtonStyle: React.CSSProperties = {
@@ -414,6 +415,7 @@ const smallButtonStyle: React.CSSProperties = {
   border: '1px solid #ccc',
   borderRadius: 5,
   cursor: 'pointer',
+  touchAction: 'manipulation',
 }
 
 const linkButtonStyle: React.CSSProperties = {
@@ -424,6 +426,7 @@ const linkButtonStyle: React.CSSProperties = {
   fontSize: 12,
   padding: '4px 0',
   textAlign: 'left',
+  touchAction: 'manipulation',
 }
 
 const xButtonStyle: React.CSSProperties = {
@@ -435,4 +438,5 @@ const xButtonStyle: React.CSSProperties = {
   lineHeight: 1,
   padding: 8,
   margin: -8,
+  touchAction: 'manipulation',
 }
