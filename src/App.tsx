@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Canvas, type Mode } from './components/Canvas'
 import { Toolbar } from './components/Toolbar'
 import { DetailPanel } from './components/DetailPanel'
@@ -41,6 +41,16 @@ export default function App() {
   }
 
   const closeDetail = () => setSelection({ kind: null, id: null })
+
+  // iOS Safari's edge-swipe back/forward gesture can pop this page's history entry
+  // when a pan on the canvas starts near the screen edge. Keep re-arming a dummy
+  // entry so that gesture can't actually navigate the user away from the app.
+  useEffect(() => {
+    history.pushState(null, '', location.href)
+    const trapBack = () => history.pushState(null, '', location.href)
+    window.addEventListener('popstate', trapBack)
+    return () => window.removeEventListener('popstate', trapBack)
+  }, [])
 
   return (
     <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' }}>
