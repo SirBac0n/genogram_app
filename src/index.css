@@ -9,8 +9,15 @@ html, body, #root {
   overscroll-behavior: none;
 }
 
+/* Lock the page to the viewport with no native-scrollable surface at all. This is
+   what actually stops mobile browsers from interpreting a drag on the canvas as a
+   pull-to-refresh or edge-swipe back/forward navigation gesture -- touch-action and
+   overscroll-behavior alone aren't reliably enough on iOS/Android for that. */
 html, body {
   overflow: hidden;
+  position: fixed;
+  inset: 0;
+  width: 100%;
 }
 
 body {
