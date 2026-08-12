@@ -6,6 +6,8 @@ interface DetailPanelProps {
   store: ReturnType<typeof useGenogramStore>
   selection: Selection
   onSelect: (selection: Selection) => void
+  isMobile?: boolean
+  onClose?: () => void
 }
 
 const inputStyle: React.CSSProperties = {
@@ -19,14 +21,14 @@ const inputStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = { fontSize: 11, color: '#666', marginBottom: 3, display: 'block', marginTop: 10 }
 
-export function DetailPanel({ store, selection, onSelect }: DetailPanelProps) {
+export function DetailPanel({ store, selection, onSelect, isMobile = false, onClose = () => {} }: DetailPanelProps) {
   const { state } = store
   const [newConditionLabel, setNewConditionLabel] = useState('')
   const [newConditionCategory, setNewConditionCategory] = useState<ConditionCategory>('medical')
 
   if (selection.kind === 'person' && selection.id) {
     const person = state.people.find((p) => p.id === selection.id)
-    if (!person) return <EmptyPanel />
+    if (!person) return <EmptyPanel isMobile={isMobile} onClose={onClose} />
     const relatedUnions = state.unions.filter((u) => u.partnerIds.includes(person.id))
     const parentUnions = state.unions.filter((u) => u.children.some((c) => c.childId === person.id))
     const siblingLinksForPerson = state.siblingLinks.filter(
@@ -34,7 +36,7 @@ export function DetailPanel({ store, selection, onSelect }: DetailPanelProps) {
     )
 
     return (
-      <div style={panelStyle}>
+      <PanelShell isMobile={isMobile} onClose={onClose}>
         <h3 style={{ margin: '0 0 4px' }}>Person</h3>
         <label style={labelStyle}>First name</label>
         <input style={inputStyle} value={person.firstName} onChange={(e) => store.updatePerson(person.id, { firstName: e.target.value })} />
@@ -158,15 +160,15 @@ export function DetailPanel({ store, selection, onSelect }: DetailPanelProps) {
             })}
           </>
         )}
-      </div>
+      </PanelShell>
     )
   }
 
   if (selection.kind === 'union' && selection.id) {
     const union = state.unions.find((u) => u.id === selection.id)
-    if (!union) return <EmptyPanel />
+    if (!union) return <EmptyPanel isMobile={isMobile} onClose={onClose} />
     return (
-      <div style={panelStyle}>
+      <PanelShell isMobile={isMobile} onClose={onClose}>
         <h3 style={{ margin: '0 0 4px' }}>Relationship</h3>
         <div style={{ fontSize: 13, marginBottom: 6 }}>
           {union.partnerIds.map((id) => personName(state, id)).join(' & ')}
@@ -221,18 +223,18 @@ export function DetailPanel({ store, selection, onSelect }: DetailPanelProps) {
             ))}
           </>
         )}
-      </div>
+      </PanelShell>
     )
   }
 
   if (selection.kind === 'child-link' && selection.id && selection.childId) {
     const union = state.unions.find((u) => u.id === selection.id)
     const link = union?.children.find((c) => c.childId === selection.childId)
-    if (!union || !link) return <EmptyPanel />
+    if (!union || !link) return <EmptyPanel isMobile={isMobile} onClose={onClose} />
     const parentNames = union.partnerIds.map((id) => personName(state, id)).join(' & ') || 'Unknown parent'
 
     return (
-      <div style={panelStyle}>
+      <PanelShell isMobile={isMobile} onClose={onClose}>
         <button style={linkButtonStyle} onClick={() => onSelect({ kind: 'union', id: union.id })}>
           ← Back to relationship
         </button>
@@ -273,16 +275,16 @@ export function DetailPanel({ store, selection, onSelect }: DetailPanelProps) {
           value={link.notes ?? ''}
           onChange={(e) => store.updateChildLinkNotes(union.id, link.childId, e.target.value)}
         />
-      </div>
+      </PanelShell>
     )
   }
 
   if (selection.kind === 'sibling-link' && selection.id) {
     const link = state.siblingLinks.find((l) => l.id === selection.id)
-    if (!link) return <EmptyPanel />
+    if (!link) return <EmptyPanel isMobile={isMobile} onClose={onClose} />
 
     return (
-      <div style={panelStyle}>
+      <PanelShell isMobile={isMobile} onClose={onClose}>
         <h3 style={{ margin: '0 0 4px' }}>Sibling Relationship</h3>
         <div style={{ fontSize: 13, marginBottom: 6 }}>
           {personName(state, link.personAId)} & {personName(state, link.personBId)}
@@ -310,11 +312,11 @@ export function DetailPanel({ store, selection, onSelect }: DetailPanelProps) {
           value={link.notes ?? ''}
           onChange={(e) => store.updateSiblingLinkNotes(link.id, e.target.value)}
         />
-      </div>
+      </PanelShell>
     )
   }
 
-  return <EmptyPanel />
+  return <EmptyPanel isMobile={isMobile} onClose={onClose} />
 }
 
 const QUALITY_LABELS: Record<RelationshipQuality, string> = {
@@ -334,12 +336,27 @@ function categoryColor(category: ConditionCategory): string {
   return { medical: '#d64545', psychological: '#4a6fd6', substance: '#c9962c', other: '#6b6b6b' }[category]
 }
 
-function EmptyPanel() {
+function EmptyPanel({ isMobile, onClose }: { isMobile: boolean; onClose: () => void }) {
   return (
-    <div style={panelStyle}>
+    <PanelShell isMobile={isMobile} onClose={onClose}>
       <p style={{ fontSize: 13, color: '#777' }}>
         Select a person or relationship line to view and edit details. Use the toolbar to add people and create links.
       </p>
+    </PanelShell>
+  )
+}
+
+function PanelShell({ isMobile, onClose, children }: { isMobile: boolean; onClose: () => void; children: React.ReactNode }) {
+  if (!isMobile) {
+    return <div style={panelStyle}>{children}</div>
+  }
+  return (
+    <div style={mobilePanelStyle}>
+      <div style={dragHandleStyle} />
+      <button style={mobileCloseButtonStyle} onClick={onClose} aria-label="Close">
+        ✕
+      </button>
+      {children}
     </div>
   )
 }
@@ -353,8 +370,46 @@ const panelStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 }
 
+const mobilePanelStyle: React.CSSProperties = {
+  position: 'fixed',
+  left: 0,
+  right: 0,
+  bottom: 0,
+  maxHeight: '75vh',
+  overflowY: 'auto',
+  background: '#fff',
+  borderTopLeftRadius: 16,
+  borderTopRightRadius: 16,
+  padding: '10px 16px 24px',
+  boxShadow: '0 -4px 24px rgba(0,0,0,0.18)',
+  zIndex: 50,
+  boxSizing: 'border-box',
+}
+
+const dragHandleStyle: React.CSSProperties = {
+  width: 40,
+  height: 4,
+  borderRadius: 2,
+  background: '#ddd',
+  margin: '0 auto 8px',
+}
+
+const mobileCloseButtonStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 8,
+  right: 12,
+  border: 'none',
+  background: 'transparent',
+  fontSize: 20,
+  lineHeight: 1,
+  padding: 8,
+  cursor: 'pointer',
+  color: '#666',
+}
+
 const smallButtonStyle: React.CSSProperties = {
-  padding: '5px 9px',
+  padding: '8px 10px',
+  minHeight: 36,
   fontSize: 12,
   border: '1px solid #ccc',
   borderRadius: 5,
@@ -367,7 +422,7 @@ const linkButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
   color: '#2563eb',
   fontSize: 12,
-  padding: 0,
+  padding: '4px 0',
   textAlign: 'left',
 }
 
@@ -376,6 +431,8 @@ const xButtonStyle: React.CSSProperties = {
   background: 'transparent',
   cursor: 'pointer',
   color: '#999',
-  fontSize: 13,
+  fontSize: 15,
   lineHeight: 1,
+  padding: 8,
+  margin: -8,
 }

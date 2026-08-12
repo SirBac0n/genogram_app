@@ -1,13 +1,37 @@
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html, body, #root {
   height: 100%;
   margin: 0;
+  overscroll-behavior: none;
 }
 
 body {
   font-family: system-ui, -apple-system, Segoe UI, sans-serif;
   color: #1f1f1f;
+}
+
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.toolbar-scroll {
+  scrollbar-width: thin;
+}
+
+.toolbar-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+/* Prevent iOS Safari from auto-zooming when a form field is focused */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }

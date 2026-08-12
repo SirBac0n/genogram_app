@@ -3,12 +3,14 @@ import { Canvas, type Mode } from './components/Canvas'
 import { Toolbar } from './components/Toolbar'
 import { DetailPanel } from './components/DetailPanel'
 import { useGenogramStore } from './state/useGenogramStore'
+import { useIsMobile } from './hooks/useIsMobile'
 import { downloadGenogram, readGenogramFile } from './utils/storage'
 import type { Selection } from './types'
 
 export default function App() {
   const store = useGenogramStore()
   const { state } = store
+  const isMobile = useIsMobile()
   const [mode, setMode] = useState<Mode>('select')
   const [selection, setSelection] = useState<Selection>({ kind: null, id: null })
 
@@ -38,8 +40,10 @@ export default function App() {
     }
   }
 
+  const closeDetail = () => setSelection({ kind: null, id: null })
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'system-ui, sans-serif' }}>
+    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' }}>
       <Toolbar
         mode={mode}
         setMode={(m) => setMode(m)}
@@ -66,10 +70,23 @@ export default function App() {
             </div>
           )}
         </div>
-        <DetailPanel store={store} selection={selection} onSelect={setSelection} />
+        {!isMobile && <DetailPanel store={store} selection={selection} onSelect={setSelection} />}
       </div>
+      {isMobile && selection.kind !== null && (
+        <>
+          <div style={backdropStyle} onClick={closeDetail} />
+          <DetailPanel store={store} selection={selection} onSelect={setSelection} isMobile onClose={closeDetail} />
+        </>
+      )}
     </div>
   )
+}
+
+const backdropStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.3)',
+  zIndex: 40,
 }
 
 const hintStyle: React.CSSProperties = {

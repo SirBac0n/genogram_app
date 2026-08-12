@@ -14,12 +14,15 @@ interface ToolbarProps {
 }
 
 const buttonBase: React.CSSProperties = {
-  padding: '6px 10px',
+  padding: '10px 14px',
+  minHeight: 40,
   fontSize: 13,
   border: '1px solid #ccc',
   borderRadius: 6,
   background: '#fff',
   cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
 }
 
 export function Toolbar({
@@ -52,43 +55,52 @@ export function Toolbar({
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '8px 12px',
-        borderBottom: '1px solid #ddd',
-        flexWrap: 'wrap',
-        background: '#fafafa',
-      }}
-    >
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        style={{ fontSize: 15, fontWeight: 600, border: '1px solid transparent', padding: '4px 6px', minWidth: 160 }}
-        onFocus={(e) => (e.target.style.borderColor = '#ccc')}
-        onBlur={(e) => (e.target.style.borderColor = 'transparent')}
-      />
-      <div style={{ width: 1, height: 24, background: '#ddd' }} />
-      {modeButton('select', 'Select / Move')}
-      {modeButton('add-male', '+ Male')}
-      {modeButton('add-female', '+ Female')}
-      {modeButton('add-unknown', '+ Unknown')}
-      {modeButton('link-partner', 'Link Partners')}
-      {modeButton('link-child', 'Link Parent → Child')}
-      {modeButton('link-sibling', 'Link Siblings')}
-      <div style={{ width: 1, height: 24, background: '#ddd' }} />
-      <button style={buttonBase} disabled={!hasSelection} onClick={onDeleteSelected}>
-        Delete Selected
-      </button>
-      <div style={{ flex: 1 }} />
-      <button style={buttonBase} onClick={onExport}>Export JSON</button>
-      <label style={{ ...buttonBase, display: 'inline-block' }}>
-        Import JSON
-        <input type="file" accept="application/json" onChange={handleImportChange} style={{ display: 'none' }} />
-      </label>
-      <button style={buttonBase} onClick={onReset}>New / Clear</button>
+    <div style={{ borderBottom: '1px solid #ddd', background: '#fafafa' }}>
+      <div style={{ padding: '8px 12px 4px' }}>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          style={{
+            fontSize: 16,
+            fontWeight: 600,
+            border: '1px solid transparent',
+            padding: '6px 8px',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+          onFocus={(e) => (e.target.style.borderColor = '#ccc')}
+          onBlur={(e) => (e.target.style.borderColor = 'transparent')}
+        />
+      </div>
+      <div
+        className="toolbar-scroll"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '4px 12px 10px',
+          overflowX: 'auto',
+        }}
+      >
+        {modeButton('select', 'Select / Move')}
+        {modeButton('add-male', '+ Male')}
+        {modeButton('add-female', '+ Female')}
+        {modeButton('add-unknown', '+ Unknown')}
+        {modeButton('link-partner', 'Link Partners')}
+        {modeButton('link-child', 'Link Parent → Child')}
+        {modeButton('link-sibling', 'Link Siblings')}
+        <div style={{ width: 1, height: 24, background: '#ddd', flexShrink: 0 }} />
+        <button style={buttonBase} disabled={!hasSelection} onClick={onDeleteSelected}>
+          Delete Selected
+        </button>
+        <div style={{ width: 1, height: 24, background: '#ddd', flexShrink: 0 }} />
+        <button style={buttonBase} onClick={onExport}>Export JSON</button>
+        <label style={{ ...buttonBase, display: 'inline-flex', alignItems: 'center' }}>
+          Import JSON
+          <input type="file" accept="application/json" onChange={handleImportChange} style={{ display: 'none' }} />
+        </label>
+        <button style={buttonBase} onClick={onReset}>New / Clear</button>
+      </div>
     </div>
   )
 }

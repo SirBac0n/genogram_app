@@ -5,7 +5,7 @@ interface HitLineProps {
   y2: number
 }
 
-const HIT_WIDTH = 14
+const HIT_WIDTH = 20
 
 export function HitLine({ x1, y1, x2, y2 }: HitLineProps) {
   return (

@@ -31,6 +31,15 @@ interface ViewState {
 
 const DRAG_THRESHOLD = 4
 
+function safeSetPointerCapture(el: Element, pointerId: number) {
+  try {
+    el.setPointerCapture(pointerId)
+  } catch {
+    // Pointer capture can fail (e.g. pointer already released); the SVG's own
+    // listeners still receive move/up events as long as the pointer stays inside it.
+  }
+}
+
 export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: CanvasProps) {
   const { state } = store
   const svgRef = useRef<SVGSVGElement>(null)
@@ -46,6 +55,12 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
     startY: number
     moved: boolean
   } | null>(null)
+  const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const pinchState = useRef<{
+    startDist: number
+    startCenter: { x: number; y: number }
+    startView: ViewState
+  } | null>(null)
 
   const peopleById = useMemo(() => new Map(state.people.map((p) => [p.id, p])), [state.people])
 
@@ -60,6 +75,21 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
 
   function handleBackgroundPointerDown(e: ReactPointerEvent<SVGSVGElement>) {
     if (e.target !== svgRef.current) return
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    safeSetPointerCapture(e.target as Element, e.pointerId)
+
+    if (activePointers.current.size === 2) {
+      panState.current = null
+      const [p1, p2] = Array.from(activePointers.current.values())
+      pinchState.current = {
+        startDist: Math.hypot(p1.x - p2.x, p1.y - p2.y),
+        startCenter: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
+        startView: view,
+      }
+      return
+    }
+    if (activePointers.current.size > 2) return
+
     if (mode.startsWith('add-')) {
       const sex = mode === 'add-male' ? 'male' : mode === 'add-female' ? 'female' : 'unknown'
       const { x, y } = clientToWorld(e.clientX, e.clientY)
@@ -69,10 +99,35 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
     }
     onSelect({ kind: null, id: null })
     panState.current = { startX: e.clientX, startY: e.clientY, viewX: view.x, viewY: view.y }
-    ;(e.target as Element).setPointerCapture(e.pointerId)
   }
 
   function handleBackgroundPointerMove(e: ReactPointerEvent<SVGSVGElement>) {
+    if (activePointers.current.has(e.pointerId)) {
+      activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    }
+
+    if (pinchState.current && activePointers.current.size === 2) {
+      const svg = svgRef.current
+      const pinch = pinchState.current
+      if (svg && pinch.startDist > 0) {
+        const [p1, p2] = Array.from(activePointers.current.values())
+        const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y)
+        const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
+        const rect = svg.getBoundingClientRect()
+        const newScale = Math.min(3, Math.max(0.3, pinch.startView.scale * (dist / pinch.startDist)))
+        const startCenterLocal = { x: pinch.startCenter.x - rect.left, y: pinch.startCenter.y - rect.top }
+        const worldX = (startCenterLocal.x - pinch.startView.x) / pinch.startView.scale
+        const worldY = (startCenterLocal.y - pinch.startView.y) / pinch.startView.scale
+        const currentCenterLocal = { x: center.x - rect.left, y: center.y - rect.top }
+        setView({
+          scale: newScale,
+          x: currentCenterLocal.x - worldX * newScale,
+          y: currentCenterLocal.y - worldY * newScale,
+        })
+      }
+      return
+    }
+
     if (panState.current) {
       const dx = e.clientX - panState.current.startX
       const dy = e.clientY - panState.current.startY
@@ -89,8 +144,17 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
     }
   }
 
-  function handleBackgroundPointerUp() {
-    panState.current = null
+  function handleBackgroundPointerUp(e: ReactPointerEvent<SVGSVGElement>) {
+    activePointers.current.delete(e.pointerId)
+    if (activePointers.current.size < 2) {
+      pinchState.current = null
+    }
+    if (activePointers.current.size === 1) {
+      const [[, pos]] = Array.from(activePointers.current.entries())
+      panState.current = { startX: pos.x, startY: pos.y, viewX: view.x, viewY: view.y }
+    } else {
+      panState.current = null
+    }
     dragState.current = null
   }
 
@@ -127,7 +191,7 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
         startY: person.y,
         moved: false,
       }
-      ;(e.target as Element).setPointerCapture(e.pointerId)
+      safeSetPointerCapture(e.target as Element, e.pointerId)
     }
   }
 
