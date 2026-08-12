@@ -9,6 +9,10 @@ html, body, #root {
   overscroll-behavior: none;
 }
 
+html, body {
+  overflow: hidden;
+}
+
 body {
   font-family: system-ui, -apple-system, Segoe UI, sans-serif;
   color: #1f1f1f;
