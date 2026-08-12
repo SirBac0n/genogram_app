@@ -14,15 +14,22 @@ interface ToolbarProps {
 }
 
 const buttonBase: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   padding: '10px 14px',
   minHeight: 40,
   fontSize: 13,
+  fontFamily: 'inherit',
+  lineHeight: 'normal',
   border: '1px solid #ccc',
   borderRadius: 6,
   background: '#fff',
   cursor: 'pointer',
   whiteSpace: 'nowrap',
   flexShrink: 0,
+  appearance: 'none',
+  WebkitAppearance: 'none',
 }
 
 export function Toolbar({
@@ -95,7 +102,7 @@ export function Toolbar({
         </button>
         <div style={{ width: 1, height: 24, background: '#ddd', flexShrink: 0 }} />
         <button style={buttonBase} onClick={onExport}>Export JSON</button>
-        <label style={{ ...buttonBase, display: 'inline-flex', alignItems: 'center' }}>
+        <label style={buttonBase}>
           Import JSON
           <input type="file" accept="application/json" onChange={handleImportChange} style={{ display: 'none' }} />
         </label>
