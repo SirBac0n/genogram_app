@@ -223,6 +223,24 @@ export function DetailPanel({ store, selection, onSelect, isMobile = false, onCl
             ))}
           </>
         )}
+
+        <button
+          style={{ ...dangerButtonStyle, marginTop: 14 }}
+          onClick={() => {
+            if (
+              union.children.length === 0 ||
+              confirm(
+                `Delete this relationship? ${union.children.length} ${union.children.length === 1 ? 'child link' : 'child links'} to this union will also be removed.`,
+              )
+            ) {
+              store.deleteUnion(union.id)
+              onSelect({ kind: null, id: null })
+              if (isMobile) onClose()
+            }
+          }}
+        >
+          Delete This Relationship
+        </button>
       </PanelShell>
     )
   }
@@ -275,6 +293,16 @@ export function DetailPanel({ store, selection, onSelect, isMobile = false, onCl
           value={link.notes ?? ''}
           onChange={(e) => store.updateChildLinkNotes(union.id, link.childId, e.target.value)}
         />
+
+        <button
+          style={{ ...dangerButtonStyle, marginTop: 14 }}
+          onClick={() => {
+            store.removeChildFromUnion(union.id, link.childId)
+            onSelect({ kind: 'union', id: union.id })
+          }}
+        >
+          Remove This Parent–Child Link
+        </button>
       </PanelShell>
     )
   }
@@ -312,6 +340,17 @@ export function DetailPanel({ store, selection, onSelect, isMobile = false, onCl
           value={link.notes ?? ''}
           onChange={(e) => store.updateSiblingLinkNotes(link.id, e.target.value)}
         />
+
+        <button
+          style={{ ...dangerButtonStyle, marginTop: 14 }}
+          onClick={() => {
+            store.deleteSiblingLink(link.id)
+            onSelect({ kind: null, id: null })
+            if (isMobile) onClose()
+          }}
+        >
+          Delete This Sibling Link
+        </button>
       </PanelShell>
     )
   }
@@ -414,6 +453,21 @@ const smallButtonStyle: React.CSSProperties = {
   fontSize: 12,
   border: '1px solid #ccc',
   borderRadius: 5,
+  cursor: 'pointer',
+  touchAction: 'manipulation',
+}
+
+const dangerButtonStyle: React.CSSProperties = {
+  display: 'block',
+  width: '100%',
+  padding: '8px 10px',
+  minHeight: 36,
+  fontSize: 12,
+  fontWeight: 600,
+  border: '1px solid #e0aeae',
+  borderRadius: 5,
+  background: '#fdf2f2',
+  color: '#b02a2a',
   cursor: 'pointer',
   touchAction: 'manipulation',
 }
