@@ -8,6 +8,15 @@ interface PersonNodeProps {
   onClick: (e: React.MouseEvent) => void
 }
 
+// Gives labels a white halo so a relationship line passing behind the text
+// doesn't visually cut through the letters.
+const labelHaloStyle: React.CSSProperties = {
+  paintOrder: 'stroke',
+  stroke: '#ffffff',
+  strokeWidth: 4,
+  strokeLinejoin: 'round',
+}
+
 export function PersonNode({ person, selected, onPointerDown, onClick }: PersonNodeProps) {
   const { x, y, sex } = person
   const deceased = Boolean(person.deathDate)
@@ -73,11 +82,11 @@ export function PersonNode({ person, selected, onPointerDown, onClick }: PersonN
         )
       })}
 
-      <text x={x} y={y + NODE_HALF + 16} textAnchor="middle" fontSize={12} fill="#1f1f1f">
+      <text x={x} y={y + NODE_HALF + 16} textAnchor="middle" fontSize={12} fill="#1f1f1f" style={labelHaloStyle}>
         {person.firstName} {person.lastName}
       </text>
       {(person.birthDate || person.deathDate) && (
-        <text x={x} y={y + NODE_HALF + 30} textAnchor="middle" fontSize={10} fill="#555">
+        <text x={x} y={y + NODE_HALF + 30} textAnchor="middle" fontSize={10} fill="#555" style={labelHaloStyle}>
           {person.birthDate ?? '?'} – {person.deathDate ?? ''}
         </text>
       )}
