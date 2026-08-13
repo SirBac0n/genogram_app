@@ -21,6 +21,15 @@ const inputStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = { fontSize: 11, color: '#666', marginBottom: 3, display: 'block', marginTop: 10 }
 
+const checkboxRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  fontSize: 12,
+  color: '#333',
+  marginTop: 10,
+}
+
 export function DetailPanel({ store, selection, onSelect, isMobile = false, onClose = () => {} }: DetailPanelProps) {
   const { state } = store
   const [newConditionLabel, setNewConditionLabel] = useState('')
@@ -52,6 +61,16 @@ export function DetailPanel({ store, selection, onSelect, isMobile = false, onCl
         <input type="date" style={inputStyle} value={person.birthDate ?? ''} onChange={(e) => store.updatePerson(person.id, { birthDate: e.target.value || undefined })} />
         <label style={labelStyle}>Death date</label>
         <input type="date" style={inputStyle} value={person.deathDate ?? ''} onChange={(e) => store.updatePerson(person.id, { deathDate: e.target.value || undefined })} />
+        {person.deathDate && (
+          <label style={checkboxRowStyle}>
+            <input
+              type="checkbox"
+              checked={person.prematureDeath ?? false}
+              onChange={(e) => store.updatePerson(person.id, { prematureDeath: e.target.checked })}
+            />
+            Premature / unexpected death
+          </label>
+        )}
         <label style={labelStyle}>Notes</label>
         <textarea style={{ ...inputStyle, minHeight: 60 }} value={person.notes ?? ''} onChange={(e) => store.updatePerson(person.id, { notes: e.target.value })} />
 
@@ -270,6 +289,15 @@ export function DetailPanel({ store, selection, onSelect, isMobile = false, onCl
           <option value="adopted">Adopted</option>
           <option value="foster">Foster</option>
         </select>
+
+        <label style={checkboxRowStyle}>
+          <input
+            type="checkbox"
+            checked={link.outOfWedlock ?? false}
+            onChange={(e) => store.updateChildLinkOutOfWedlock(union.id, link.childId, e.target.checked)}
+          />
+          Born out of wedlock
+        </label>
 
         <label style={labelStyle}>Relationship quality</label>
         <select

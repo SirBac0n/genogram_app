@@ -11,6 +11,7 @@ interface PersonNodeProps {
 
 const MULTI_SELECT_RING_PAD = 7
 const MULTI_SELECT_COLOR = '#f59e0b'
+const PREMATURE_DEATH_COLOR = '#dc2626'
 
 // Gives labels a white halo so a relationship line passing behind the text
 // doesn't visually cut through the letters.
@@ -84,10 +85,11 @@ export function PersonNode({ person, selected, multiSelected = false, onPointerD
       )}
 
       {deceased && (
-        <>
-          <line x1={x - NODE_HALF} y1={y - NODE_HALF} x2={x + NODE_HALF} y2={y + NODE_HALF} stroke={strokeColor} strokeWidth={2} />
-          <line x1={x - NODE_HALF} y1={y + NODE_HALF} x2={x + NODE_HALF} y2={y - NODE_HALF} stroke={strokeColor} strokeWidth={2} />
-        </>
+        <g stroke={person.prematureDeath ? PREMATURE_DEATH_COLOR : strokeColor} strokeWidth={2}>
+          {person.prematureDeath && <title>Premature / unexpected death</title>}
+          <line x1={x - NODE_HALF} y1={y - NODE_HALF} x2={x + NODE_HALF} y2={y + NODE_HALF} />
+          <line x1={x - NODE_HALF} y1={y + NODE_HALF} x2={x + NODE_HALF} y2={y - NODE_HALF} />
+        </g>
       )}
 
       {person.isProband && (

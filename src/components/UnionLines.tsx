@@ -81,7 +81,13 @@ export function UnionLines({ union, peopleById, selected, selectedChildId, onCli
           />
           {children.map((child, i) => {
             const link = union.children.find((c) => c.childId === child.id)
-            const childDash = link?.type === 'foster' ? '4,3' : link?.type === 'adopted' ? '1,3' : undefined
+            const childDash = link?.outOfWedlock
+              ? '5,2,1,2'
+              : link?.type === 'foster'
+                ? '4,3'
+                : link?.type === 'adopted'
+                  ? '1,3'
+                  : undefined
             const childSelected = selectedChildId === child.id
             const childColor = childSelected ? '#2563eb' : strokeColor
             return (

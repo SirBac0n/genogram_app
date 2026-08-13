@@ -34,6 +34,7 @@ type Action =
   | { type: 'ADD_CHILD_TO_UNION'; unionId: string; childId: string; linkType: ChildLinkType }
   | { type: 'REMOVE_CHILD_FROM_UNION'; unionId: string; childId: string }
   | { type: 'UPDATE_CHILD_LINK_TYPE'; unionId: string; childId: string; linkType: ChildLinkType }
+  | { type: 'UPDATE_CHILD_LINK_OUT_OF_WEDLOCK'; unionId: string; childId: string; outOfWedlock: boolean }
   | { type: 'UPDATE_CHILD_LINK_QUALITY'; unionId: string; childId: string; quality: RelationshipQuality | undefined }
   | { type: 'UPDATE_CHILD_LINK_NOTES'; unionId: string; childId: string; notes: string }
   | { type: 'LINK_PARENT_CHILD'; parentId: string; childId: string; linkType: ChildLinkType }
@@ -176,6 +177,21 @@ function reducer(state: Genogram, action: Action): Genogram {
                 ...u,
                 children: u.children.map((c) =>
                   c.childId === action.childId ? { ...c, type: action.linkType } : c,
+                ),
+              }
+            : u,
+        ),
+      }
+    }
+    case 'UPDATE_CHILD_LINK_OUT_OF_WEDLOCK': {
+      return {
+        ...state,
+        unions: state.unions.map((u) =>
+          u.id === action.unionId
+            ? {
+                ...u,
+                children: u.children.map((c) =>
+                  c.childId === action.childId ? { ...c, outOfWedlock: action.outOfWedlock } : c,
                 ),
               }
             : u,
@@ -331,6 +347,11 @@ export function useGenogramStore() {
       dispatch({ type: 'UPDATE_CHILD_LINK_TYPE', unionId, childId, linkType }),
     [],
   )
+  const updateChildLinkOutOfWedlock = useCallback(
+    (unionId: string, childId: string, outOfWedlock: boolean) =>
+      dispatch({ type: 'UPDATE_CHILD_LINK_OUT_OF_WEDLOCK', unionId, childId, outOfWedlock }),
+    [],
+  )
   const updateChildLinkQuality = useCallback(
     (unionId: string, childId: string, quality: RelationshipQuality | undefined) =>
       dispatch({ type: 'UPDATE_CHILD_LINK_QUALITY', unionId, childId, quality }),
@@ -381,6 +402,7 @@ export function useGenogramStore() {
     addChildToUnion,
     removeChildFromUnion,
     updateChildLinkType,
+    updateChildLinkOutOfWedlock,
     updateChildLinkQuality,
     updateChildLinkNotes,
     linkParentChild,

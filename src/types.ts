@@ -15,6 +15,8 @@ export interface Person {
   sex: Sex
   birthDate?: string
   deathDate?: string
+  /** Death was premature/unexpected -- rendered as a distinct color on the deceased marker. */
+  prematureDeath?: boolean
   notes?: string
   conditions: ConditionTag[]
   isProband?: boolean
@@ -31,6 +33,8 @@ export type ChildLinkType = 'biological' | 'adopted' | 'foster'
 export interface ChildLink {
   childId: string
   type: ChildLinkType
+  /** Child was born while the parents were not married. */
+  outOfWedlock?: boolean
   quality?: RelationshipQuality
   notes?: string
 }
