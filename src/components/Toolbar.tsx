@@ -11,6 +11,8 @@ interface ToolbarProps {
   onExport: () => void
   onImportFile: (file: File) => void
   onReset: () => void
+  multiSelectedCount: number
+  onClearMultiSelect: () => void
 }
 
 const buttonBase: React.CSSProperties = {
@@ -43,6 +45,8 @@ export function Toolbar({
   onExport,
   onImportFile,
   onReset,
+  multiSelectedCount,
+  onClearMultiSelect,
 }: ToolbarProps) {
   function modeButton(m: Mode, label: string) {
     const active = mode === m
@@ -91,6 +95,12 @@ export function Toolbar({
         }}
       >
         {modeButton('select', 'Select / Move')}
+        {modeButton('multi-select', 'Select Multiple')}
+        {multiSelectedCount > 0 && (
+          <button style={buttonBase} onClick={onClearMultiSelect}>
+            Clear ({multiSelectedCount})
+          </button>
+        )}
         {modeButton('add-male', '+ Male')}
         {modeButton('add-female', '+ Female')}
         {modeButton('add-unknown', '+ Unknown')}

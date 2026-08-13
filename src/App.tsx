@@ -13,9 +13,31 @@ export default function App() {
   const isMobile = useIsMobile()
   const [mode, setMode] = useState<Mode>('select')
   const [selection, setSelection] = useState<Selection>({ kind: null, id: null })
+  const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set())
+
+  function toggleMultiSelect(id: string) {
+    setMultiSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function clearMultiSelect() {
+    setMultiSelectedIds(new Set())
+  }
 
   function handleDeleteSelected() {
-    if (selection.kind === 'person' && selection.id) store.deletePerson(selection.id)
+    if (selection.kind === 'person' && selection.id) {
+      store.deletePerson(selection.id)
+      setMultiSelectedIds((prev) => {
+        if (!prev.has(selection.id!)) return prev
+        const next = new Set(prev)
+        next.delete(selection.id!)
+        return next
+      })
+    }
     if (selection.kind === 'union' && selection.id) store.deleteUnion(selection.id)
     if (selection.kind === 'child-link' && selection.id && selection.childId) {
       store.removeChildFromUnion(selection.id, selection.childId)
@@ -29,6 +51,7 @@ export default function App() {
       .then((data) => {
         store.load(data)
         setSelection({ kind: null, id: null })
+        clearMultiSelect()
       })
       .catch((err) => alert(`Could not import file: ${err.message ?? err}`))
   }
@@ -37,6 +60,7 @@ export default function App() {
     if (state.people.length === 0 || confirm('Clear the current genogram? This cannot be undone.')) {
       store.reset()
       setSelection({ kind: null, id: null })
+      clearMultiSelect()
     }
   }
 
@@ -64,6 +88,8 @@ export default function App() {
         onExport={() => downloadGenogram(state)}
         onImportFile={handleImportFile}
         onReset={handleReset}
+        multiSelectedCount={multiSelectedIds.size}
+        onClearMultiSelect={clearMultiSelect}
       />
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         <div style={{ flex: 1, position: 'relative' }}>
@@ -73,12 +99,21 @@ export default function App() {
             onModeConsumed={() => setMode('select')}
             selection={selection}
             onSelect={setSelection}
+            multiSelectedIds={multiSelectedIds}
+            onToggleMultiSelect={toggleMultiSelect}
+            onClearMultiSelect={clearMultiSelect}
           />
-          {state.people.length === 0 && (
+          {state.people.length === 0 ? (
             <div style={hintStyle}>
               Use the toolbar to add your first person, then use "Link Partners" and "Link Parent → Child" to build out the tree.
             </div>
-          )}
+          ) : mode === 'multi-select' ? (
+            <div style={hintStyle}>
+              {multiSelectedIds.size === 0
+                ? 'Tap people to select them, then drag any selected person to move the group.'
+                : `${multiSelectedIds.size} selected — drag any of them to move the group together. Tap empty space to clear.`}
+            </div>
+          ) : null}
         </div>
         {!isMobile && <DetailPanel store={store} selection={selection} onSelect={setSelection} />}
       </div>

@@ -8,6 +8,7 @@ import type { useGenogramStore } from '../state/useGenogramStore'
 
 export type Mode =
   | 'select'
+  | 'multi-select'
   | 'add-male'
   | 'add-female'
   | 'add-unknown'
@@ -21,6 +22,9 @@ interface CanvasProps {
   onModeConsumed: () => void
   selection: Selection
   onSelect: (selection: Selection) => void
+  multiSelectedIds: Set<string>
+  onToggleMultiSelect: (id: string) => void
+  onClearMultiSelect: () => void
 }
 
 interface ViewState {
@@ -40,7 +44,16 @@ function safeSetPointerCapture(el: Element, pointerId: number) {
   }
 }
 
-export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: CanvasProps) {
+export function Canvas({
+  store,
+  mode,
+  onModeConsumed,
+  selection,
+  onSelect,
+  multiSelectedIds,
+  onToggleMultiSelect,
+  onClearMultiSelect,
+}: CanvasProps) {
   const { state } = store
   const svgRef = useRef<SVGSVGElement>(null)
   const [view, setView] = useState<ViewState>({ x: 0, y: 0, scale: 1 })
@@ -48,11 +61,10 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
 
   const panState = useRef<{ startX: number; startY: number; viewX: number; viewY: number } | null>(null)
   const dragState = useRef<{
-    personId: string
+    personIds: string[]
     startClientX: number
     startClientY: number
-    startX: number
-    startY: number
+    startPositions: Map<string, { x: number; y: number }>
     moved: boolean
   } | null>(null)
   const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map())
@@ -97,7 +109,7 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
       onModeConsumed()
       return
     }
-    onSelect({ kind: null, id: null })
+    if (mode === 'select') onSelect({ kind: null, id: null })
     panState.current = { startX: e.clientX, startY: e.clientY, viewX: view.x, viewY: view.y }
   }
 
@@ -140,7 +152,10 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
       const dy = e.clientY - d.startClientY
       if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) d.moved = true
       if (d.moved) {
-        store.movePerson(d.personId, d.startX + dx / view.scale, d.startY + dy / view.scale)
+        for (const id of d.personIds) {
+          const start = d.startPositions.get(id)
+          if (start) store.movePerson(id, start.x + dx / view.scale, start.y + dy / view.scale)
+        }
       }
     }
   }
@@ -154,6 +169,13 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
       const [[, pos]] = Array.from(activePointers.current.entries())
       panState.current = { startX: pos.x, startY: pos.y, viewX: view.x, viewY: view.y }
     } else {
+      if (mode === 'multi-select' && panState.current) {
+        const dx = e.clientX - panState.current.startX
+        const dy = e.clientY - panState.current.startY
+        if (Math.abs(dx) <= DRAG_THRESHOLD && Math.abs(dy) <= DRAG_THRESHOLD) {
+          onClearMultiSelect()
+        }
+      }
       panState.current = null
     }
     dragState.current = null
@@ -181,15 +203,20 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
 
   function handlePersonPointerDown(e: ReactPointerEvent, personId: string) {
     e.stopPropagation()
-    if (mode === 'select') {
-      const person = peopleById.get(personId)
-      if (!person) return
+    if (mode === 'select' || mode === 'multi-select') {
+      const isGroup = multiSelectedIds.has(personId) && multiSelectedIds.size >= 2
+      const ids = isGroup ? Array.from(multiSelectedIds) : [personId]
+      const startPositions = new Map<string, { x: number; y: number }>()
+      for (const id of ids) {
+        const p = peopleById.get(id)
+        if (p) startPositions.set(id, { x: p.x, y: p.y })
+      }
+      if (startPositions.size === 0) return
       dragState.current = {
-        personId,
+        personIds: ids,
         startClientX: e.clientX,
         startClientY: e.clientY,
-        startX: person.x,
-        startY: person.y,
+        startPositions,
         moved: false,
       }
       safeSetPointerCapture(e.target as Element, e.pointerId)
@@ -201,6 +228,10 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
     if (dragState.current?.moved) return
     if (mode === 'select') {
       onSelect({ kind: 'person', id: personId })
+      return
+    }
+    if (mode === 'multi-select') {
+      onToggleMultiSelect(personId)
       return
     }
     if (mode === 'link-partner') {
@@ -297,6 +328,7 @@ export function Canvas({ store, mode, onModeConsumed, selection, onSelect }: Can
             selected={
               (selection.kind === 'person' && selection.id === p.id) || pendingLink === p.id
             }
+            multiSelected={multiSelectedIds.has(p.id)}
             onPointerDown={(e) => handlePersonPointerDown(e, p.id)}
             onClick={(e) => handlePersonClick(e, p.id)}
           />

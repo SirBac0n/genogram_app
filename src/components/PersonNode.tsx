@@ -4,9 +4,13 @@ import type { Person } from '../types'
 interface PersonNodeProps {
   person: Person
   selected: boolean
+  multiSelected?: boolean
   onPointerDown: (e: React.PointerEvent) => void
   onClick: (e: React.MouseEvent) => void
 }
+
+const MULTI_SELECT_RING_PAD = 7
+const MULTI_SELECT_COLOR = '#f59e0b'
 
 // Gives labels a white halo so a relationship line passing behind the text
 // doesn't visually cut through the letters.
@@ -17,11 +21,12 @@ const labelHaloStyle: React.CSSProperties = {
   strokeLinejoin: 'round',
 }
 
-export function PersonNode({ person, selected, onPointerDown, onClick }: PersonNodeProps) {
+export function PersonNode({ person, selected, multiSelected = false, onPointerDown, onClick }: PersonNodeProps) {
   const { x, y, sex } = person
   const deceased = Boolean(person.deathDate)
   const strokeColor = selected ? '#2563eb' : '#1f1f1f'
   const strokeWidth = person.isProband ? 3.5 : selected ? 2.5 : 1.75
+  const ringHalf = NODE_HALF + MULTI_SELECT_RING_PAD
 
   return (
     <g
@@ -30,6 +35,31 @@ export function PersonNode({ person, selected, onPointerDown, onClick }: PersonN
       style={{ cursor: 'grab' }}
       data-person-id={person.id}
     >
+      {multiSelected && sex === 'male' && (
+        <rect
+          x={x - ringHalf}
+          y={y - ringHalf}
+          width={ringHalf * 2}
+          height={ringHalf * 2}
+          fill="none"
+          stroke={MULTI_SELECT_COLOR}
+          strokeWidth={2}
+          strokeDasharray="4,3"
+        />
+      )}
+      {multiSelected && sex === 'female' && (
+        <circle cx={x} cy={y} r={ringHalf} fill="none" stroke={MULTI_SELECT_COLOR} strokeWidth={2} strokeDasharray="4,3" />
+      )}
+      {multiSelected && sex === 'unknown' && (
+        <polygon
+          points={`${x},${y - ringHalf} ${x + ringHalf},${y} ${x},${y + ringHalf} ${x - ringHalf},${y}`}
+          fill="none"
+          stroke={MULTI_SELECT_COLOR}
+          strokeWidth={2}
+          strokeDasharray="4,3"
+        />
+      )}
+
       {sex === 'male' && (
         <rect
           x={x - NODE_HALF}
